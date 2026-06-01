@@ -132,6 +132,13 @@ class BotCommands:
         cmd = parts[0].lstrip("/").lower()
         arg = parts[1] if len(parts) > 1 else ""
 
+        # Fix outgoing messages sender_id
+        if sender_id is None and ev.out:
+            me = await client.get_me()
+            sender_id = me.id
+
+        self.logger.info(f"ROUTE: /{cmd} from {sender_id} in {chat_id} (cmd_user={self.state.COMMAND_USER_ID})")
+
         # Check wizard first
         if sender_id in self.state.pending_wizards:
             completed = await self.account_wizard.handle_step(
@@ -151,17 +158,24 @@ class BotCommands:
             await self._handle_pending_op(client, ev, key)
             return
 
-        # Auth check
+        # Auth check — allow if no COMMAND_USER_ID set yet
+        if self.state.COMMAND_USER_ID is None:
+            self.logger.info(f"Setting COMMAND_USER_ID to {sender_id}")
+            self.state.COMMAND_USER_ID = sender_id
+
         if self.state.COMMAND_USER_ID and sender_id != self.state.COMMAND_USER_ID:
+            self.logger.info(f"Auth denied: {sender_id} != {self.state.COMMAND_USER_ID}")
             return
 
         if cmd not in self.cfg.COMMANDS:
+            self.logger.info(f"Unknown command: /{cmd}")
             return
 
+        self.logger.info(f"Dispatching /{cmd}")
         try:
             await self._dispatch(client, chat_id, cmd, arg, ev)
         except Exception as e:
-            self.logger.error(f"Command /{cmd} error: {e}")
+            self.logger.error(f"Command /{cmd} error: {e}", exc_info=True)
             await self.messenger.safe_send(client, chat_id, f"❌ خطأ: {e}", tag="CMD")
 
     async def _dispatch(self, client, chat_id, cmd, arg, ev):

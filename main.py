@@ -144,25 +144,42 @@ class BotManager:
         """ Register command handlers on admin client only. """
         pat = r'(?i)^/(?:' + "|".join(self.cfg.COMMANDS) + r')\b'
 
-        @client.on(events.NewMessage(incoming=True, pattern=pat, chats=[self.cfg.COMMAND_GROUP_ID]))
-        @client.on(events.NewMessage(outgoing=True, pattern=pat, chats=[self.cfg.COMMAND_GROUP_ID]))
-        async def on_command(ev):
+        async def _on_command(ev):
+            self.cfg.logger.debug(f"CMD: /{ev.message.message.strip().lstrip('/').split()[0]} from {ev.message.sender_id}")
             await self.commands.route(client, ev)
 
-        # Also handle messages in command group for pending ops & wizards
-        @client.on(events.NewMessage(incoming=True, chats=[self.cfg.COMMAND_GROUP_ID]))
-        @client.on(events.NewMessage(outgoing=True, chats=[self.cfg.COMMAND_GROUP_ID]))
-        async def on_admin_message(ev):
+        async def _on_admin_msg(ev):
             await self._on_admin_message(ev)
+
+        client.add_event_handler(
+            _on_command,
+            events.NewMessage(incoming=True, pattern=pat, chats=[self.cfg.COMMAND_GROUP_ID])
+        )
+        client.add_event_handler(
+            _on_command,
+            events.NewMessage(outgoing=True, pattern=pat, chats=[self.cfg.COMMAND_GROUP_ID])
+        )
+        client.add_event_handler(
+            _on_admin_msg,
+            events.NewMessage(incoming=True, chats=[self.cfg.COMMAND_GROUP_ID])
+        )
+        client.add_event_handler(
+            _on_admin_msg,
+            events.NewMessage(outgoing=True, chats=[self.cfg.COMMAND_GROUP_ID])
+        )
+
+        self.cfg.logger.info(f"Command handlers registered for group {self.cfg.COMMAND_GROUP_ID}")
+        self.cfg.logger.info(f"Available commands: {len(self.cfg.COMMANDS)} commands")
 
     def _register_handlers(self, account: ManagedAccount):
         """ Register message handlers on managed accounts. """
         client = account.client
 
-        @client.on(events.NewMessage(incoming=True))
-        @client.on(events.NewMessage(outgoing=True))
-        async def on_message(ev):
+        async def _on_msg(ev):
             await self._on_message(ev)
+
+        client.add_event_handler(_on_msg, events.NewMessage(incoming=True))
+        client.add_event_handler(_on_msg, events.NewMessage(outgoing=True))
 
     async def _on_message(self, ev):
         """ Quick filter + pipeline submit for managed accounts. """
