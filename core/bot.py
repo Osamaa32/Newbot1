@@ -81,17 +81,24 @@ class MessagePipeline:
 
     async def _worker(self, name: str):
         while True:
+            ev = None
             try:
                 ev = await self.queue.get()
                 async with self.semaphore:
                     await asyncio.wait_for(self.handler(ev), timeout=30.0)
+            except asyncio.CancelledError:
+                if ev is not None:
+                    self.queue.task_done()
+                break
             except asyncio.TimeoutError:
                 self.dropped += 1
             except Exception as e:
                 if self.logger:
                     self.logger.debug(f"Pipeline {name} error: {e}")
-            finally:
-                self.queue.task_done()
+            else:
+                # Success — mark done
+                if ev is not None:
+                    self.queue.task_done()
 
     async def submit(self, ev: events.NewMessage.Event):
         try:

@@ -330,7 +330,8 @@ class PostgresDB:
     async def get_active_accounts(self) -> list[dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                'SELECT * FROM accounts WHERE is_active = true ORDER BY created_at'
+                'SELECT * FROM accounts WHERE is_active = $1 ORDER BY created_at',
+                True
             )
             return [dict(r) for r in rows]
 

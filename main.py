@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 import telethon
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
 from core.config import AppConfig
