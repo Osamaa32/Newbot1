@@ -1,6 +1,0 @@
-[build]
-builder = "DOCKERFILE"
-
-[deploy]
-startCommand = "python -O main.py"
-restartPolicyType = "ALWAYS"
