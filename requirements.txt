@@ -1,0 +1,18 @@
+# Core Framework
+python-telegram-bot[job-queue]>=20.7
+telethon>=1.33.0
+
+# Async Database
+asyncpg>=0.29.0
+
+# Web Server (Health Checks)
+aiohttp>=3.9.0
+
+# Security
+bcrypt>=4.1.0
+
+# Text Processing
+rapidfuzz>=3.5.0
+
+# Environment
+python-dotenv>=1.0.0
