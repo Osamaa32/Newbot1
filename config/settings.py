@@ -54,9 +54,14 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def fix_postgres_url(cls, v):
-        """Railway uses postgres:// but asyncpg needs postgresql://"""
-        if v and v.startswith("postgres://") and not v.startswith("postgresql://"):
-            return v.replace("postgres://", "postgresql://", 1)
+        """Ensure URL uses postgresql+asyncpg:// for SQLAlchemy async"""
+        if not v:
+            return v
+        # Railway gives postgres:// — convert to postgresql+asyncpg://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://") and "+asyncpg" not in v:
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
 
     @property
