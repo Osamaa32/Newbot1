@@ -80,18 +80,19 @@ class Application:
 
         # Initialize database
         self.logger.info("Initializing database...")
-        from shared.models import init_engine, create_tables, seed_defaults, SessionLocal
-        self.db_engine = init_engine(settings.DATABASE_URL, pool_size=settings.db_pool_size)
-        await create_tables()
+        import shared.models
+        self.db_engine = shared.models.init_engine(settings.DATABASE_URL, pool_size=settings.db_pool_size)
+        await shared.models.create_tables()
 
-        # Seed defaults
-        async with SessionLocal() as db:
-            await seed_defaults(db)
+        # Seed defaults — SessionLocal is only valid after init_engine()
+        async with shared.models.SessionLocal() as db:
+            await shared.models.seed_defaults(db)
         self.logger.info("Database initialized")
 
         # Create database session pool function
+        session_factory = shared.models.SessionLocal
         async def db_pool():
-            async with SessionLocal() as session:
+            async with session_factory() as session:
                 yield session
 
         # Initialize engine manager
@@ -99,8 +100,7 @@ class Application:
         from engine.manager import AccountManager
 
         # Create engine manager with a fresh session
-        from sqlalchemy.ext.asyncio import AsyncSession
-        async with SessionLocal() as db:
+        async with session_factory() as db:
             self.engine_manager = AccountManager(db)
             await self.engine_manager.initialize()
 
@@ -146,10 +146,10 @@ class Application:
 
         # Health check server
         from aiohttp import web
+        _session_factory = shared.models.SessionLocal
         async def health_handler(request):
-            from shared.models import SessionLocal
             try:
-                async with SessionLocal() as db:
+                async with _session_factory() as db:
                     from sqlalchemy import text
                     await db.execute(text("SELECT 1"))
                 return web.Response(text="OK", status=200)
